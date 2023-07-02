@@ -53,6 +53,26 @@ lexer! {
     }
 }
 
+/// Parses a mathematical expression from a string.
+/// As of now, the user must use full notation for floating point values.
+///
+/// # Examples
+/// Basid usage:
+///
+/// ```
+/// use math_engine::context::Context;
+/// use math_engine::expression::Expression;
+/// use math_engine::parser::parse_expression;
+///
+/// let expr = parse_expression("1.0 + x").unwrap();
+/// let ctx = Context::new().with_variable("x", 4.0);
+/// let eval = expr.eval(Some(&ctx)).unwrap();
+///
+/// assert_eq!(eval, 5.0);
+/// ```
+///
+/// # Errors
+/// An error is returned if the string could not be parsed.
 pub fn parse_expression(input: &str) -> Result<Expression, ParserError> {
     use parser::Parser;
 
