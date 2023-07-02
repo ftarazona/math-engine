@@ -21,10 +21,12 @@ impl Expression {
     /// Basic usage:
     ///
     /// ```
-    /// let cons = Expression::constant(2);
-    /// let eval = cons.eval(None).unwrap();
+    /// use math_engine::expression::Expression;
     ///
-    /// assert_eq!(eval, 2);
+    /// let expr = Expression::constant(2.0);
+    /// let eval = expr.eval(None).unwrap();
+    ///
+    /// assert_eq!(eval, 2.0);
     /// ```
     pub fn constant(val: f32) -> Self {
         Expression::Constant(val)
@@ -36,11 +38,14 @@ impl Expression {
     /// Basic usage:
     ///
     /// ```
-    /// let var = Expression::variable("x");
-    /// let ctx = Context::new().with_variable("x", 32);
-    /// let eval = cons.eval(Some(&ctx)).unwrap();
+    /// use math_engine::context::Context;
+    /// use math_engine::expression::Expression;
     ///
-    /// assert_eq!(eval, 32);
+    /// let expr = Expression::variable("x");
+    /// let ctx = Context::new().with_variable("x", 32.0);
+    /// let eval = expr.eval(Some(&ctx)).unwrap();
+    ///
+    /// assert_eq!(eval, 32.0);
     /// ```
     pub fn variable(name: &str) -> Self {
         Expression::Variable(name.to_string())
@@ -52,10 +57,15 @@ impl Expression {
     /// Basic usage:
     ///
     /// ```
-    /// let sum = Expression::addition(Expression::constant(2), Expression::Constant(3));
-    /// let eval = cons.eval(None).unwrap();
+    /// use math_engine::expression::Expression;
     ///
-    /// assert_eq!(eval, 5);
+    /// let expr = Expression::addition(
+    ///     Expression::constant(2.0), 
+    ///     Expression::Constant(3.0)
+    /// );
+    /// let eval = expr.eval(None).unwrap();
+    ///
+    /// assert_eq!(eval, 5.0);
     /// ```
     pub fn addition(e1: Expression, e2: Expression) -> Self {
         Expression::BinOp(BinOp::Addition, Box::new(e1), Box::new(e2))
@@ -67,10 +77,15 @@ impl Expression {
     /// Basic usage:
     ///
     /// ```
-    /// let sum = Expression::subtraction(Expression::constant(2), Expression::Constant(3));
-    /// let eval = cons.eval(None).unwrap();
+    /// use math_engine::expression::Expression;
     ///
-    /// assert_eq!(eval, -1);
+    /// let expr = Expression::subtraction(
+    ///     Expression::constant(2.0), 
+    ///     Expression::Constant(3.0)
+    /// );
+    /// let eval = expr.eval(None).unwrap();
+    ///
+    /// assert_eq!(eval, -1.0);
     /// ```
     pub fn subtraction(e1: Expression, e2: Expression) -> Self {
         Expression::BinOp(BinOp::Subtraction, Box::new(e1), Box::new(e2))
@@ -82,10 +97,15 @@ impl Expression {
     /// Basic usage:
     ///
     /// ```
-    /// let sum = Expression::product(Expression::constant(2), Expression::Constant(3));
-    /// let eval = cons.eval(None).unwrap();
+    /// use math_engine::expression::Expression;
     ///
-    /// assert_eq!(eval, 6);
+    /// let expr = Expression::product(
+    ///     Expression::constant(2.0), 
+    ///     Expression::Constant(3.0)
+    /// );
+    /// let eval = expr.eval(None).unwrap();
+    ///
+    /// assert_eq!(eval, 6.0);
     /// ```
     pub fn product(e1: Expression, e2: Expression) -> Self {
         Expression::BinOp(BinOp::Product, Box::new(e1), Box::new(e2))
@@ -97,8 +117,13 @@ impl Expression {
     /// Basic usage:
     ///
     /// ```
-    /// let sum = Expression::addition(Expression::constant(3), Expression::Constant(2));
-    /// let eval = cons.eval(None).unwrap();
+    /// use math_engine::expression::Expression;
+    ///
+    /// let expr = Expression::division(
+    ///     Expression::constant(3.0), 
+    ///     Expression::Constant(2.0)
+    /// );
+    /// let eval = expr.eval(None).unwrap();
     ///
     /// assert_eq!(eval, 1.5);
     /// ```
@@ -115,23 +140,26 @@ impl Expression {
     /// # Examples
     ///
     /// ```
+    /// use math_engine::context::Context;
+    /// use math_engine::expression::Expression;
+    ///
     /// // Expression is (1 - 5) + (2 * (4 + 6))
     /// let expr = Expression::addition(
     ///     Expression::subtraction(
-    ///         Expression::constant(1), 
-    ///         Expression::constant(5)
+    ///         Expression::constant(1.0), 
+    ///         Expression::constant(5.0)
     ///     ),
     ///     Expression::product(
-    ///         Expression::constant(2),
+    ///         Expression::constant(2.0),
     ///         Expression::addition(
-    ///             Expression::constant(4),
-    ///             Expression::constant(6)
+    ///             Expression::constant(4.0),
+    ///             Expression::constant(6.0)
     ///         )
     ///     )
     /// );
     /// let eval = expr.eval(None).unwrap();
     /// 
-    /// assert_eq!(eval, 16);
+    /// assert_eq!(eval, 16.0);
     /// ```
     ///
     /// # Errors
@@ -174,8 +202,3 @@ impl Expression {
     }
 }
 
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-}

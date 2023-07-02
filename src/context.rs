@@ -17,7 +17,9 @@ impl Context {
     /// Basic usage:
     ///
     /// ```
-    /// let ctx = Context::new().with_variable("x", 32);
+    /// use math_engine::context::Context;
+    ///
+    /// let ctx = Context::new().with_variable("x", 32.0);
     /// ```
     pub fn with_variable(mut self, name: &str, val: f32) -> Self {
         let _ = self.vars.insert(name.to_string(), val);
@@ -29,10 +31,12 @@ impl Context {
     /// # Examples
     /// Basic usage:
     ///
-    /// ```
+    /// ```should_panic
+    /// use math_engine::context::Context;
+    ///
     /// let mut ctx = Context::new();
-    /// ctx.add_variable("x", 32).unwrap();
-    /// ctx.add_variable("x", 31).unwrap(); // Panics
+    /// ctx.add_variable("x", 32.0).unwrap();
+    /// ctx.add_variable("x", 31.0).unwrap(); // Panics
     /// ```
     pub fn add_variable(&mut self, name: &str, val: f32) -> Result<(), error::ContextError> {
         let name = name.to_string();
