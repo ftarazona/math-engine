@@ -43,4 +43,11 @@ impl Context {
             None => Ok(()),
         }
     }
+
+    pub fn get_variable(&self, name: &String) -> Result<f32, error::ContextError> {
+        match self.vars.get(name) {
+            Some(r) => Ok(*r),
+            None => Err(error::ContextError::VariableNotFound),
+        }
+    }
 }
