@@ -7,4 +7,7 @@ fn main() {
 
     let deriv = expr.derivative("x");
     println!("{}", deriv.to_string());
+
+    let simp = deriv.constant_propagation().unwrap();
+    println!("{}", simp.to_string());
 }

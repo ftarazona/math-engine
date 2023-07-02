@@ -5,10 +5,18 @@ pub struct Context {
     vars: HashMap<String, f32>,
 }
 
+impl Default for Context {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Context {
     /// Creates a new empty context.
     pub fn new() -> Self {
-        Self { vars: HashMap::new() }
+        Self {
+            vars: HashMap::new(),
+        }
     }
 
     /// Adds a variable to the context, overwriting it if already existing.

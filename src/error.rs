@@ -6,6 +6,7 @@ pub enum ContextError {
 
 #[derive(Debug)]
 pub enum EvalError {
+    DivisionByZero,
     IsInfinite,
     NotANumber,
     NoContextGiven,
@@ -18,4 +19,3 @@ pub enum ParserError {
     ParserError,
     NoExpressionFound,
 }
-

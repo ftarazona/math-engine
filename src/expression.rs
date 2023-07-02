@@ -1,7 +1,7 @@
 use crate::context::Context;
 use crate::error;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub enum BinOp {
     Addition,
     Subtraction,
@@ -46,6 +46,24 @@ impl ToString for Expression {
 }
 
 impl Expression {
+    /// Parses an expression from a string.
+    ///
+    /// # Examples
+    /// Basic usage;
+    ///
+    /// ```
+    /// use math_engine::expression::Expression;
+    ///
+    /// let expr = Expression::parse("1.0 + x").unwrap();
+    /// ```
+    ///
+    /// # Errors
+    /// A ParserError is returned by the parser if the string could not be
+    /// parsed properly.
+    pub fn parse(s: &str) -> Result<Self, error::ParserError> {
+        Expression::from_str(s)
+    }
+
     /// Creates a new constant from a floating point value.
     ///
     /// # Examples
@@ -82,6 +100,11 @@ impl Expression {
         Expression::Variable(name.to_string())
     }
 
+    /// Creates an expression representing a binary operation.
+    fn binary_op(op: BinOp, e1: Expression, e2: Expression) -> Self {
+        Expression::BinOp(op, Box::new(e1), Box::new(e2))
+    }
+
     /// Creates a new binary operation which sums two sub-expressions
     ///
     /// # Examples
@@ -91,7 +114,7 @@ impl Expression {
     /// use math_engine::expression::Expression;
     ///
     /// let expr = Expression::addition(
-    ///     Expression::constant(2.0), 
+    ///     Expression::constant(2.0),
     ///     Expression::Constant(3.0)
     /// );
     /// let eval = expr.eval().unwrap();
@@ -111,7 +134,7 @@ impl Expression {
     /// use math_engine::expression::Expression;
     ///
     /// let expr = Expression::subtraction(
-    ///     Expression::constant(2.0), 
+    ///     Expression::constant(2.0),
     ///     Expression::Constant(3.0)
     /// );
     /// let eval = expr.eval().unwrap();
@@ -131,7 +154,7 @@ impl Expression {
     /// use math_engine::expression::Expression;
     ///
     /// let expr = Expression::product(
-    ///     Expression::constant(2.0), 
+    ///     Expression::constant(2.0),
     ///     Expression::Constant(3.0)
     /// );
     /// let eval = expr.eval().unwrap();
@@ -151,7 +174,7 @@ impl Expression {
     /// use math_engine::expression::Expression;
     ///
     /// let expr = Expression::division(
-    ///     Expression::constant(3.0), 
+    ///     Expression::constant(3.0),
     ///     Expression::Constant(2.0)
     /// );
     /// let eval = expr.eval().unwrap();
@@ -181,15 +204,13 @@ impl Expression {
                 } else {
                     Ok(r)
                 }
-            },
-            Expression::Variable(name) => {
-                match ctx {
-                    Some(ctx) => match ctx.get_variable(name) {
-                        Ok(r) => Ok(r),
-                        Err(_) => Err(error::EvalError::VariableNotFound(name.clone())),
-                    },
-                    None => Err(error::EvalError::NoContextGiven),
-                }
+            }
+            Expression::Variable(name) => match ctx {
+                Some(ctx) => match ctx.get_variable(name) {
+                    Ok(r) => Ok(r),
+                    Err(_) => Err(error::EvalError::VariableNotFound(name.clone())),
+                },
+                None => Err(error::EvalError::NoContextGiven),
             },
         }
     }
@@ -209,7 +230,7 @@ impl Expression {
     /// // Expression is (1 - 5) + (2 * (4 + 6))
     /// let expr = Expression::addition(
     ///     Expression::subtraction(
-    ///         Expression::constant(1.0), 
+    ///         Expression::constant(1.0),
     ///         Expression::constant(5.0)
     ///     ),
     ///     Expression::product(
@@ -221,7 +242,7 @@ impl Expression {
     ///     )
     /// );
     /// let eval = expr.eval().unwrap();
-    /// 
+    ///
     /// assert_eq!(eval, 16.0);
     /// ```
     ///
@@ -256,7 +277,7 @@ impl Expression {
     /// );
     /// let ctx = Context::new().with_variable("x", 2.0);
     /// let eval = expr.eval_with_context(&ctx).unwrap();
-    /// 
+    ///
     /// assert_eq!(eval, 1.0/3.0);
     /// ```
     ///
@@ -288,12 +309,13 @@ impl Expression {
     pub fn derivative(&self, deriv_var: &str) -> Self {
         match self {
             Expression::Constant(_) => Expression::constant(0.0),
-            Expression::Variable(var) =>
+            Expression::Variable(var) => {
                 if var.as_str() == deriv_var {
                     Expression::constant(1.0)
                 } else {
                     Expression::variable(var.as_str())
-                },
+                }
+            }
             Expression::BinOp(op, e1, e2) => {
                 let deriv_e1 = e1.derivative(deriv_var);
                 let deriv_e2 = e2.derivative(deriv_var);
@@ -309,13 +331,62 @@ impl Expression {
                             Expression::product(*e2.clone(), deriv_e1),
                             Expression::product(deriv_e2, *e1.clone()),
                         ),
-                        Expression::product(
-                            *e2.clone(), *e2.clone()
-                        ),
+                        Expression::product(*e2.clone(), *e2.clone()),
                     ),
                 }
-            },
+            }
+        }
+    }
+
+    /// Simplifies the expression by applying constant propagation.
+    ///
+    /// # Examples
+    /// Basic usage:
+    /// 
+    /// ```
+    /// use math_engine::expression::Expression;
+    ///
+    /// let expr = Expression::parse("1.0 * y + 0.0 * x + 2.0 / 3.0").unwrap();
+    ///
+    /// //Represents "y + 0.66666..."
+    /// let simp = expr.constant_propagation().unwrap()
+    /// ```
+    ///
+    /// # Errors
+    /// An EvalError (DivisionByZero) can be returned if the partial evaluation
+    /// of the expression revealed a division by zero.
+    pub fn constant_propagation(&self) -> Result<Self, error::EvalError> {
+        match self {
+            Expression::Constant(_) => Ok(self.clone()),
+            Expression::Variable(_) => Ok(self.clone()),
+            Expression::BinOp(op, e1, e2) => {
+                let e1 = e1.constant_propagation()?;
+                let e2 = e2.constant_propagation()?;
+                match (op, &e1, &e2) {
+                    (_, Expression::Constant(v1), Expression::Constant(v2)) => match op {
+                        BinOp::Addition => Ok(Expression::constant(v1 + v2)),
+                        BinOp::Subtraction => Ok(Expression::constant(v1 - v2)),
+                        BinOp::Product => Ok(Expression::constant(v1 * v2)),
+                        BinOp::Division => Ok(Expression::constant(v1 / v2)),
+                    },
+                    (BinOp::Product, Expression::Constant(v), _) if *v == 1.0 => Ok(e2),
+                    (BinOp::Product, _, Expression::Constant(v)) if *v == 1.0  => Ok(e1),
+                    (BinOp::Division, _, Expression::Constant(v)) if *v == 1.0 => Ok(e1),
+                    (_, Expression::Constant(v), _) if *v == 0.0 => match op {
+                        BinOp::Addition => Ok(e2),
+                        BinOp::Subtraction => unimplemented!(),
+                        BinOp::Product => Ok(Expression::constant(0.0)),
+                        BinOp::Division => Ok(Expression::constant(0.0)),
+                    },
+                    (_, _, Expression::Constant(v)) if *v == 0.0 => match op {
+                        BinOp::Addition => Ok(e1),
+                        BinOp::Subtraction => Ok(e1),
+                        BinOp::Product => Ok(Expression::constant(0.0)),
+                        BinOp::Division => Err(error::EvalError::DivisionByZero),
+                    },
+                    _ => Ok(Expression::binary_op(*op, e1, e2)),
+                }
+            }
         }
     }
 }
-
