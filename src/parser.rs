@@ -66,7 +66,7 @@ lexer! {
 ///
 /// let expr = parse_expression("1.0 + x").unwrap();
 /// let ctx = Context::new().with_variable("x", 4.0);
-/// let eval = expr.eval(Some(&ctx)).unwrap();
+/// let eval = expr.eval_with_context(&ctx).unwrap();
 ///
 /// assert_eq!(eval, 5.0);
 /// ```

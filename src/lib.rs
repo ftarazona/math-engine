@@ -10,7 +10,7 @@ mod tests {
     #[test]
     fn parser() {
         let expr = parser::parse_expression("1.0 + 3.0 * (4.0 - 2.0)").unwrap();
-        let eval = expr.eval(None).unwrap();
+        let eval = expr.eval().unwrap();
 
         assert_eq!(eval, 7.0);
     }
@@ -19,7 +19,7 @@ mod tests {
     fn parser_variable() {
         let expr = parser::parse_expression("1.0 + x").unwrap();
         let ctx = context::Context::new().with_variable("x", 4.0);
-        let eval = expr.eval(Some(&ctx)).unwrap();
+        let eval = expr.eval_with_context(&ctx).unwrap();
 
         assert_eq!(eval, 5.0);
     }
