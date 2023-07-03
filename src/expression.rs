@@ -26,7 +26,7 @@ impl FromStr for Expression {
     }
 }
 
-impl ToString for Expression {
+impl Expression {
     fn to_string(&self) -> String {
         match self {
             Expression::Constant(val) => val.to_string(),
@@ -42,6 +42,13 @@ impl ToString for Expression {
                 }
             }
         }
+    }
+}
+
+use std::fmt::{Display, Error, Formatter};
+impl Display for Expression {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
+        write!(f, "{}", self.to_string())
     }
 }
 
@@ -390,3 +397,25 @@ impl Expression {
         }
     }
 }
+
+use std::ops::{Add, Sub, Mul, Div};
+macro_rules! expression_impl_trait {
+    ($tr:ident, $tr_fun:ident, $fun:ident) => {
+        impl $tr for Expression {
+            type Output = Self;
+
+            fn $tr_fun(self, other: Self) -> Self::Output {
+                Expression::$fun(self, other)
+            }
+        }
+        //impl {$t}rAssign for Expression {
+        //    fn $tr_fun_assign(&mut self, other: Self) {
+        //        *self = Expression::$fun(self, other)
+        //    }
+        //}
+    }
+}
+expression_impl_trait!(Add, add, addition);
+expression_impl_trait!(Sub, sub, subtraction);
+expression_impl_trait!(Mul, mul, product);
+expression_impl_trait!(Div, div, division);

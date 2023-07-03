@@ -10,4 +10,8 @@ fn main() {
 
     let simp = deriv.constant_propagation().unwrap();
     println!("{}", simp.to_string());
+
+    let expr2 = Expression::parse("z / 4.0").unwrap();
+    let expr = expr + expr2;
+    println!("{}", expr);
 }
