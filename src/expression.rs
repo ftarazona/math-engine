@@ -29,22 +29,24 @@ impl FromStr for Expression {
 use std::fmt::{Display, Error, Formatter};
 impl Display for Expression {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
-        
-
-        write!(f, "{}", match self {
-            Expression::Constant(val) => val.to_string(),
-            Expression::Variable(var) => var.to_string(),
-            Expression::BinOp(op, e1, e2) => {
-                let s1 = e1.to_string();
-                let s2 = e2.to_string();
-                match op {
-                    BinOp::Addition => format!("({} + {})", s1, s2),
-                    BinOp::Subtraction => format!("({} - {})", s1, s2),
-                    BinOp::Product => format!("({} * {})", s1, s2),
-                    BinOp::Division => format!("({} / {})", s1, s2),
+        write!(
+            f,
+            "{}",
+            match self {
+                Expression::Constant(val) => val.to_string(),
+                Expression::Variable(var) => var.to_string(),
+                Expression::BinOp(op, e1, e2) => {
+                    let s1 = e1.to_string();
+                    let s2 = e2.to_string();
+                    match op {
+                        BinOp::Addition => format!("({} + {})", s1, s2),
+                        BinOp::Subtraction => format!("({} - {})", s1, s2),
+                        BinOp::Product => format!("({} * {})", s1, s2),
+                        BinOp::Division => format!("({} / {})", s1, s2),
+                    }
                 }
             }
-        })
+        )
     }
 }
 
@@ -345,7 +347,7 @@ impl Expression {
     ///
     /// # Examples
     /// Basic usage:
-    /// 
+    ///
     /// ```
     /// use math_engine::expression::Expression;
     ///
@@ -373,7 +375,7 @@ impl Expression {
                         BinOp::Division => Ok(Expression::constant(v1 / v2)),
                     },
                     (BinOp::Product, Expression::Constant(v), _) if *v == 1.0 => Ok(e2),
-                    (BinOp::Product, _, Expression::Constant(v)) if *v == 1.0  => Ok(e1),
+                    (BinOp::Product, _, Expression::Constant(v)) if *v == 1.0 => Ok(e1),
                     (BinOp::Division, _, Expression::Constant(v)) if *v == 1.0 => Ok(e1),
                     (_, Expression::Constant(v), _) if *v == 0.0 => match op {
                         BinOp::Addition => Ok(e2),
@@ -394,7 +396,7 @@ impl Expression {
     }
 }
 
-use std::ops::{Add, Sub, Mul, Div};
+use std::ops::{Add, Div, Mul, Sub};
 macro_rules! expression_impl_trait {
     ($tr:ident, $tr_fun:ident, $fun:ident) => {
         impl $tr for Expression {
@@ -409,7 +411,7 @@ macro_rules! expression_impl_trait {
         //        *self = Expression::$fun(self, other)
         //    }
         //}
-    }
+    };
 }
 expression_impl_trait!(Add, add, addition);
 expression_impl_trait!(Sub, sub, subtraction);
