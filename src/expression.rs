@@ -26,9 +26,12 @@ impl FromStr for Expression {
     }
 }
 
-impl Expression {
-    fn to_string(&self) -> String {
-        match self {
+use std::fmt::{Display, Error, Formatter};
+impl Display for Expression {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
+        
+
+        write!(f, "{}", match self {
             Expression::Constant(val) => val.to_string(),
             Expression::Variable(var) => var.to_string(),
             Expression::BinOp(op, e1, e2) => {
@@ -41,14 +44,7 @@ impl Expression {
                     BinOp::Division => format!("({} / {})", s1, s2),
                 }
             }
-        }
-    }
-}
-
-use std::fmt::{Display, Error, Formatter};
-impl Display for Expression {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
-        write!(f, "{}", self.to_string())
+        })
     }
 }
 
