@@ -389,11 +389,14 @@ impl Expression {
                         BinOp::Product => Ok(Expression::constant(0.0)),
                         BinOp::Division => Err(error::EvalError::DivisionByZero),
                     },
-                    (BinOp::Addition, Expression::Variable(var1), Expression::Variable(var2)) if (var1 == var2) => 
+                    (BinOp::Addition, Expression::Variable(var1), Expression::Variable(var2))
+                        if (var1 == var2) =>
+                    {
                         Ok(Expression::product(
                             Expression::constant(2.0),
                             Expression::variable(var1),
-                        )), 
+                        ))
+                    }
                     _ => Ok(Expression::binary_op(*op, e1, e2)),
                 }
             }
