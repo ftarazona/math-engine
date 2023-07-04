@@ -428,6 +428,7 @@ impl Expression {
                 let e1 = e1.factorize()?;
                 let e2 = e2.factorize()?;
                 match (op, &e1, &e2) {
+                    // dealing with x * x, x + x, x - x and x / x
                     (_, Expression::Variable(var1), Expression::Variable(var2))
                         if (var1 == var2) =>
                     {
@@ -445,21 +446,46 @@ impl Expression {
                             BinOp::Power => unimplemented!(),
                         }
                     }
+                    // Power Aggregation
                     (
                         BinOp::Product,
-                        Expression::BinOp(sub_op1, sub_e1, sub_e2),
-                        Expression::BinOp(sub_op2, sub_e3, sub_e4),
-                    ) => match (*sub_op1, *sub_op2) {
-                        (BinOp::Addition, _) => Ok(Expression::addition(
-                            Expression::product(*sub_e1.clone(), e2.clone()),
-                            Expression::product(*sub_e2.clone(), e2),
-                        )),
-                        (_, BinOp::Addition) => Ok(Expression::addition(
-                            Expression::product(*sub_e3.clone(), e1.clone()),
-                            Expression::product(*sub_e4.clone(), e1),
-                        )),
-                        _ => todo!(),
-                    },
+                        Expression::BinOp(BinOp::Power, sub_e1, sub_e2),
+                        Expression::Variable(var2),
+                    ) | (
+                        BinOp::Product,
+                        Expression::Variable(var2),
+                        Expression::BinOp(BinOp::Power, sub_e1, sub_e2),
+                    ) => {
+                        if let (Expression::Variable(var1), Expression::Constant(val)) =
+                            (*sub_e1.clone(), *sub_e2.clone())
+                        {
+                            if &var1 == var2 {
+                                Ok(Expression::power(
+                                    Expression::variable(&var1),
+                                    Expression::constant(val + 1.0),
+                                ))
+                            } else {
+                                Ok(Expression::binary_op(op, e1, e2))
+                            }
+                        } else {
+                            unimplemented!()
+                        }
+                    }
+                    // Distribution
+                    (
+                        BinOp::Product,
+                        Expression::BinOp(BinOp::Addition, sub_e1, sub_e2),
+                        distributed_expr,
+                    )
+                    | (
+                        BinOp::Product,
+                        distributed_expr,
+                        Expression::BinOp(BinOp::Addition, sub_e1, sub_e2),
+                    ) => Ok(Expression::addition(
+                        Expression::product(*sub_e1.clone(), distributed_expr.clone()),
+                        Expression::product(*sub_e2.clone(), distributed_expr.clone()),
+                    )
+                    .factorize()?),
                     // Product w/ Constant and BinOp
                     (
                         BinOp::Product,
@@ -471,11 +497,7 @@ impl Expression {
                         Expression::Constant(val),
                         Expression::BinOp(sub_op, sub_e1, sub_e2),
                     ) => match *sub_op {
-                        BinOp::Addition => Ok(Expression::addition(
-                            Expression::product(Expression::constant(*val), *sub_e1.clone()),
-                            Expression::product(Expression::constant(*val), *sub_e2.clone()),
-                        )
-                        .factorize()?),
+                        BinOp::Addition => unreachable!(),
                         BinOp::Product => match (*sub_e1.clone(), *sub_e2.clone()) {
                             (Expression::Constant(sub_val), other)
                             | (other, Expression::Constant(sub_val)) => Ok(Expression::product(
@@ -503,11 +525,7 @@ impl Expression {
                         Expression::BinOp(sub_op, sub_e1, sub_e2),
                         Expression::Variable(var),
                     ) => match *sub_op {
-                        BinOp::Addition => Ok(Expression::addition(
-                            Expression::product(Expression::variable(var), *sub_e1.clone()),
-                            Expression::product(Expression::variable(var), *sub_e2.clone()),
-                        )
-                        .factorize()?),
+                        BinOp::Addition => unreachable!(),
                         BinOp::Subtraction => unimplemented!(),
                         BinOp::Product => match (*sub_e1.clone(), *sub_e2.clone()) {
                             (Expression::Constant(val), other)
@@ -518,23 +536,29 @@ impl Expression {
                             .factorize()?),
                             _ => todo!(),
                         },
-                        BinOp::Division => todo!(),
                         BinOp::Power => todo!(),
+                        BinOp::Division => todo!(),
                     },
-                    (BinOp::Product, Expression::Constant(_), Expression::Variable(_)) => {
-                        Ok(Expression::binary_op(op, e1, e2))
-                    }
+                    (_, Expression::Constant(_), Expression::Constant(_)) => unreachable!(),
                     (BinOp::Product, Expression::Variable(_), Expression::Constant(_)) => {
                         Ok(Expression::binary_op(op, e2, e1))
                     }
-                    (BinOp::Product, Expression::Variable(_), Expression::Variable(_)) => {
+                    (BinOp::Product, _, Expression::Variable(_)) => {
                         Ok(Expression::binary_op(op, e1, e2))
                     }
-                    (BinOp::Addition, _, _) => Ok(Expression::binary_op(op, e1, e2)),
-                    (BinOp::Subtraction, _, _) => Ok(Expression::binary_op(op, e1, e2)),
-                    (BinOp::Power, _, _) => Ok(Expression::binary_op(op, e1, e2)),
-                    (_, Expression::Constant(_), Expression::Constant(_)) => unreachable!(),
+                    (BinOp::Addition, Expression::Constant(_), _) => {
+                        Ok(Expression::binary_op(op, e2, e1))
+                    }
+                    (BinOp::Addition, Expression::Variable(_), Expression::Constant(_)) => {
+                        Ok(Expression::binary_op(op, e1, e2))
+                    }
+                    (BinOp::Addition, _, _) | (BinOp::Subtraction, _, _) | (BinOp::Power, _, _) => {
+                        Ok(Expression::binary_op(op, e1, e2))
+                    }
                     (BinOp::Division, _, _) => todo!(),
+                    (BinOp::Product, Expression::BinOp(_, _, _), Expression::BinOp(_, _, _)) => {
+                        todo!()
+                    }
                 }
             }
         }
