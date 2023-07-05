@@ -52,6 +52,23 @@ impl Display for Expression {
     }
 }
 
+impl PartialEq for BinOp {
+    fn eq(&self, other: &Self) -> bool {
+        core::mem::discriminant(self) == core::mem::discriminant(other)
+    }
+}
+
+impl PartialEq for Expression {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::BinOp(l0, l1, l2), Self::BinOp(r0, r1, r2)) => l0 == r0 && l1 == r1 && l2 == r2,
+            (Self::Constant(l0), Self::Constant(r0)) => l0 == r0,
+            (Self::Variable(l0), Self::Variable(r0)) => l0 == r0,
+            _ => false,
+        }
+    }
+}
+
 impl Expression {
     /// Parses an expression from a string.
     ///
@@ -373,7 +390,7 @@ impl Expression {
     /// let expr = Expression::parse("1.0 * y + 0.0 * x + 2.0 / 3.0").unwrap();
     ///
     /// //Represents "y + 0.66666..."
-    /// let simp = expr.constant_propagation().unwrap()
+    /// let simp = expr.constant_propagation().unwrap();
     /// ```
     ///
     /// # Errors
@@ -387,6 +404,7 @@ impl Expression {
                 let e1 = e1.constant_propagation()?;
                 let e2 = e2.constant_propagation()?;
                 match (op, &e1, &e2) {
+                    //Operations on constants
                     (_, Expression::Constant(v1), Expression::Constant(v2)) => match op {
                         BinOp::Addition => Ok(Expression::constant(v1 + v2)),
                         BinOp::Subtraction => Ok(Expression::constant(v1 - v2)),
@@ -395,19 +413,22 @@ impl Expression {
                         BinOp::Power => Ok(Expression::constant(v1.powf(*v2))),
                     },
                     (BinOp::Product, Expression::Constant(v), _) if *v == 1.0 => Ok(e2),
-                    (BinOp::Product, _, Expression::Constant(v)) if *v == 1.0 => Ok(e1),
-                    (BinOp::Power, _, Expression::Constant(v)) if *v == 1.0 => Ok(e1),
-                    (BinOp::Division, _, Expression::Constant(v)) if *v == 1.0 => Ok(e1),
+                    (BinOp::Product, _, Expression::Constant(v))
+                    | (BinOp::Power, _, Expression::Constant(v))
+                    | (BinOp::Division, _, Expression::Constant(v))
+                        if *v == 1.0 =>
+                    {
+                        Ok(e1)
+                    }
                     (_, Expression::Constant(v), _) if *v == 0.0 => match op {
                         BinOp::Addition => Ok(e2),
                         BinOp::Subtraction => unimplemented!(),
-                        BinOp::Product => Ok(Expression::constant(0.0)),
-                        BinOp::Division => Ok(Expression::constant(0.0)),
-                        BinOp::Power => Ok(Expression::constant(0.0)),
+                        BinOp::Product | BinOp::Division | BinOp::Power => {
+                            Ok(Expression::constant(0.0))
+                        }
                     },
                     (_, _, Expression::Constant(v)) if *v == 0.0 => match op {
-                        BinOp::Addition => Ok(e1),
-                        BinOp::Subtraction => Ok(e1),
+                        BinOp::Addition | BinOp::Subtraction => Ok(e1),
                         BinOp::Product => Ok(Expression::constant(0.0)),
                         BinOp::Division => Err(error::EvalError::DivisionByZero),
                         BinOp::Power => Ok(Expression::constant(1.0)),
@@ -418,15 +439,14 @@ impl Expression {
         }
     }
 
-    // distributing variables and factorizing constants
-    pub fn factorize(&self) -> Result<Self, error::EvalError> {
+    // Expansion
+    pub fn expansion(&self) -> Result<Self, error::EvalError> {
         let simp = self.constant_propagation()?;
-        println!("fact : {}", simp);
         match simp {
             Expression::Constant(_) | Expression::Variable(_) => Ok(simp.clone()),
             Expression::BinOp(op, e1, e2) => {
-                let e1 = e1.factorize()?;
-                let e2 = e2.factorize()?;
+                let e1 = e1.expansion()?;
+                let e2 = e2.expansion()?;
                 match (op, &e1, &e2) {
                     // dealing with x * x, x + x, x - x and x / x
                     (_, Expression::Variable(var1), Expression::Variable(var2))
@@ -446,6 +466,14 @@ impl Expression {
                             BinOp::Power => unimplemented!(),
                         }
                     }
+                    // dealing with duplicated expressions
+                    (_, _, _) if (e1 == e2) => match op {
+                        BinOp::Addition => Ok(Expression::constant(2.0) * e1),
+                        BinOp::Subtraction => Ok(Expression::constant(0.0)),
+                        BinOp::Division => Ok(Expression::constant(1.0)),
+                        BinOp::Product | BinOp::Power => unimplemented!(),
+                    },
+
                     // Power Aggregation
                     (
                         BinOp::Product,
@@ -486,7 +514,7 @@ impl Expression {
                         Expression::product(*sub_e1.clone(), distributed_expr.clone()),
                         Expression::product(*sub_e2.clone(), distributed_expr.clone()),
                     )
-                    .factorize()?),
+                    .expansion()?),
 
                     (BinOp::Product, Expression::BinOp(sub_op, sub_e1, sub_e2), sub_expr)
                     | (BinOp::Product, sub_expr, Expression::BinOp(sub_op, sub_e1, sub_e2)) => {
@@ -501,7 +529,7 @@ impl Expression {
                                             Expression::constant((*val) * sub_val),
                                             other,
                                         )
-                                        .factorize()?)
+                                        .expansion()?)
                                     }
                                     _ => todo!(),
                                 },
@@ -523,7 +551,7 @@ impl Expression {
                                             Expression::constant(val),
                                             Expression::product(Expression::variable(var), other),
                                         )
-                                        .factorize()?)
+                                        .expansion()?)
                                     }
                                     _ => todo!(),
                                 },
@@ -533,20 +561,34 @@ impl Expression {
                             Expression::BinOp(_, _, _) => todo!(),
                         }
                     }
-
+                    // Lexicographically ordering variables
+                    (BinOp::Addition, Expression::Variable(var1), Expression::Variable(var2))
+                    | (BinOp::Product, Expression::Variable(var1), Expression::Variable(var2)) => {
+                        if var1 > var2 {
+                            Ok(Expression::binary_op(op, e2, e1))
+                        } else {
+                            Ok(Expression::binary_op(op, e1, e2))
+                        }
+                    }
+                    // Covered by Constant Propagation
                     (_, Expression::Constant(_), Expression::Constant(_)) => unreachable!(),
+                    //Canonising Order : Variable * Constant => Constant * Variable
                     (BinOp::Product, Expression::Variable(_), Expression::Constant(_)) => {
                         Ok(Expression::binary_op(op, e2, e1))
                     }
+                    //Canonising Order : Anything_else * Variable
                     (BinOp::Product, _, Expression::Variable(_)) => {
                         Ok(Expression::binary_op(op, e1, e2))
                     }
+                    //Canonising Order : Constant + Anything_else => Anything_else + Constant
                     (BinOp::Addition, Expression::Constant(_), _) => {
                         Ok(Expression::binary_op(op, e2, e1))
                     }
+                    //Canonising Order : Variable + Constant
                     (BinOp::Addition, Expression::Variable(_), Expression::Constant(_)) => {
                         Ok(Expression::binary_op(op, e1, e2))
                     }
+                    // We don't touch those yet (you can remove them to see what happens)
                     (BinOp::Addition, _, _) | (BinOp::Subtraction, _, _) | (BinOp::Power, _, _) => {
                         Ok(Expression::binary_op(op, e1, e2))
                     }
